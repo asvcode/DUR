@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dur_mvp"
+version = "0.1.0"
+description = "Professionalized pipeline extracted from a notebook"
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [{name="You"}]
+
+[tool.setuptools.packages.find]
+where = ["src"]
