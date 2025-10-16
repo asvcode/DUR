@@ -113,7 +113,9 @@ def needs_review(text: str, review_triggers: list) -> bool:
     return any(trig.lower() in text.lower() for trig in review_triggers)
 
 # ==== From notebook cell 21 ====
-def get_details(drug_a, drug_b):
+def get_details(drug_a: str, drug_b: str, df_pt=None):
+    if df_pt is None:
+        raise ValueError("df_pt is required. Pass df_pt=... to get_details/get_dur2.")
     severity, details = pd_interaction_report(
         df_pt,
         drug_a,
@@ -445,7 +447,7 @@ def letter_score_from_actionable(df_actionable, drug_a_col=None, drug_b_col=None
 
 # ==== From notebook cell 39 ====
 def get_dur2(drug_a, drug_b, use_curated_for_high_risk=True,
-            combine_method='max', top_n=7, llm_mode='blend', use_api=False):
+            combine_method='max', top_n=7, llm_mode='blend', use_api=False, df_pt=None):
     """
     Build an actionable drug–drug interaction table, draw gauges,
     and provide a single Lexicomp-style severity grade (A/B/C/D/X).
@@ -463,7 +465,7 @@ def get_dur2(drug_a, drug_b, use_curated_for_high_risk=True,
 
 
     # run the DDI pipeline
-    severity, details = get_details(drug_a, drug_b)
+    severity, details = get_details(drug_a, drug_b, df_pt=df_pt)
     df_actionable = to_actionable_table(details, drug_a, drug_b,
                                         top_n=top_n, combine_method=combine_method, policy=policy)
 

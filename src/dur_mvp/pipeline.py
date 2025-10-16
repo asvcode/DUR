@@ -26,7 +26,7 @@ from dataclasses import dataclass, field
 from functools import lru_cache
 from kaggle_secrets import UserSecretsClient
 from openai import OpenAI
-    import pandas as pd
+
 
 # If the notebook defined functions/classes, they live in utils
 try:
