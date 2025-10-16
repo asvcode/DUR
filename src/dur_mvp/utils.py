@@ -106,7 +106,7 @@ class DotDict(dict):
     __setattr__ = dict.__setitem__
     __delattr__ = dict.__delitem__
 
-def action_gen_policy(
+def actiongen_policy(
     llm_mode: str = "blend",                    # "never" | "blend" | "always"
     use_curated_for_high_risk: bool = True,
     combine_method: str = "max",                # "max" | "additive" | "intersection"
