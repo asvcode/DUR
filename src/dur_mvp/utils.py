@@ -101,29 +101,13 @@ TAG_WEIGHTS = {
     "HYPOTENSION": 2.0,
 }
 
-def actiongen_policy(
-    llm_mode: str = "blend",                     # "never" | "blend" | "always"
-    use_curated_for_high_risk: bool = True,
-    combine_method: str = "max",                 # "max" | "additive" | "intersection"
-    top_n: int = 7,
-    temperature: float = 0.0,
-    max_chars: int = 280,
-    tone: str = "conservative",
-    banned_phrases: List[str] = None,
-    redact_regexes: List[str] = None,
-    add_review_flags_for: List[str] = None,
-    tag_overrides: Dict[str, str] = None,
-    model_name: str = "gpt-4o-mini",
-    use_api: bool = False,
-    style_hint: str = None,
-) -> Dict[str, Any]:
-    """
-    Build a DUR action-generation policy (previously ActionGenPolicy dataclass).
+class DotDict(dict):
+    __getattr__ = dict.get
+    __setattr__ = dict.__setitem__
+    __delattr__ = dict.__delitem__
 
-    Returns:
-        dict: Configuration dictionary equivalent to ActionGenPolicy.
-    """
-    return {
+def actiongen_policy(... ) -> dict:
+    cfg = {
         "llm_mode": llm_mode,
         "use_curated_for_high_risk": use_curated_for_high_risk,
         "combine_method": combine_method,
@@ -138,12 +122,12 @@ def actiongen_policy(
         "tag_overrides": tag_overrides or {},
         "model_name": model_name,
         "use_api": use_api,
-        "style_hint": style_hint
-            or (
-                "One sentence, actionable, no citations, do not invent facts; "
-                "prefer monitoring/counseling; only advise ECG/labs/avoid if widely standard; ≤ 280 chars."
-            ),
+        "style_hint": style_hint or (
+            "One sentence, actionable, no citations, do not invent facts; "
+            "prefer monitoring/counseling; only advise ECG/labs/avoid if widely standard; ≤ 280 chars."
+        ),
     }
+    return DotDict(cfg)
 # ==== From notebook cell 14 ====
 # Normalize helper
 def _norm(s: str) -> str:
