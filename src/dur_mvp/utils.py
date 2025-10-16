@@ -3,25 +3,49 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional, Tuple, Iterable
 from pathlib import Path
 
-@dataclass
-class ActionGenPolicy:
-    llm_mode: str = "blend"                    # "never" | "blend" | "always"
-    use_curated_for_high_risk: bool = True
-    temperature: float = 0.0
-    max_chars: int = 280
-    tone: str = "conservative"
-    banned_phrases: list = field(default_factory=list)
-    redact_regexes: list = field(default_factory=list)
-    add_review_flags_for: list = field(default_factory=list)
-    tag_overrides: dict = field(default_factory=dict)
-    model_name: str = "gpt-4o-mini"
-    use_api: bool = False                      # toggle API vs stub
-    # >>> add this <<<
-    style_hint: str = (
-        "One sentence, actionable, no citations, do not invent facts; "
-        "prefer monitoring/counseling; only advise ECG/labs/avoid if widely standard; ≤ 280 chars."
-    )
+def actiongen_policy(
+    llm_mode: str = "blend",                     # "never" | "blend" | "always"
+    use_curated_for_high_risk: bool = True,
+    combine_method: str = "max",                 # "max" | "additive" | "intersection"
+    top_n: int = 7,
+    temperature: float = 0.0,
+    max_chars: int = 280,
+    tone: str = "conservative",
+    banned_phrases: List[str] = None,
+    redact_regexes: List[str] = None,
+    add_review_flags_for: List[str] = None,
+    tag_overrides: Dict[str, str] = None,
+    model_name: str = "gpt-4o-mini",
+    use_api: bool = False,
+    style_hint: str = None,
+) -> Dict[str, Any]:
+    """
+    Build a DUR action-generation policy (previously ActionGenPolicy dataclass).
 
+    Returns:
+        dict: Configuration dictionary equivalent to ActionGenPolicy.
+    """
+    return {
+        "llm_mode": llm_mode,
+        "use_curated_for_high_risk": use_curated_for_high_risk,
+        "combine_method": combine_method,
+        "top_n": top_n,
+        "temperature": temperature,
+        "max_chars": max_chars,
+        "tone": tone,
+        "banned_phrases": banned_phrases or [],
+        "redact_regexes": redact_regexes or [],
+        "add_review_flags_for": add_review_flags_for
+            or ["ECG", "contraindicated", "hospitalize", "discontinue"],
+        "tag_overrides": tag_overrides or {},
+        "model_name": model_name,
+        "use_api": use_api,
+        "style_hint": style_hint
+            or (
+                "One sentence, actionable, no citations, do not invent facts; "
+                "prefer monitoring/counseling; only advise ECG/labs/avoid if widely standard; ≤ 280 chars."
+            ),
+    }
 # ==== From notebook cell 14 ====
 # Normalize helper
 def _norm(s: str) -> str:
@@ -426,14 +450,17 @@ def get_dur2(drug_a, drug_b, use_curated_for_high_risk=True,
     Build an actionable drug–drug interaction table, draw gauges,
     and provide a single Lexicomp-style severity grade (A/B/C/D/X).
     """
-    policy = ActionGenPolicy(
+    policy = actiongen_policy(
         llm_mode=llm_mode,
         use_curated_for_high_risk=use_curated_for_high_risk,
+        combine_method=combine_method,
+        top_n=top_n,
         use_api=use_api,
         model_name="gpt-4o-mini",
         temperature=0.0,
-        add_review_flags_for=["ECG","contraindicated","hospitalize","discontinue"]
-    )
+        add_review_flags_for=["ECG","contraindicated","hospitalize","discontinue"],
+        )
+
 
     # run the DDI pipeline
     severity, details = get_details(drug_a, drug_b)
