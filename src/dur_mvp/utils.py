@@ -3,6 +3,103 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional, Tuple, Iterable
 from pathlib import Path
 
+# --------------------------------------------------------------------
+# Global vocabulary filters / constants
+# --------------------------------------------------------------------
+BLOCKLIST = set([
+    "pain", "injury", "procedural pain", "condition aggravated",
+    "drug interaction", "off label use", "product use issue"
+])
+
+PRIORITY_BUMP = {"QT_PROLONGATION": 2}
+
+TAG_MAP = {
+    "SEVERE_CUTANEOUS": [
+        "stevens-johnson syndrome", "stevens johnson syndrome", "sjs",       # ok, we'll boundary it
+        "toxic epidermal necrolysis",                                        # use full phrase
+        "dress", "drug reaction with eosinophilia and systemic symptoms",
+        "erythema multiforme", "angioedema", "bullous"
+    ],
+    "CNS_DEPRESSION": [
+        "somnolence","sedation","drowsiness","dizziness",
+        "confusional state","fatigue","lethargy","hypersomnia"
+    ],
+    "QT_PROLONGATION": [
+        "torsade de pointes","ventricular tachycardia",
+        "long qt","qt prolonged","qt prolongation","ventricular arrhythmia"
+    ],
+    "HEPATOTOXICITY": [
+        "hepatitis","liver function test abnormal","transaminases increased",
+        "hyperbilirubinaemia","hyperbilirubinemia","hepatic failure",
+        "cholestatic hepatitis","alt increased","ast increased"
+    ],
+    "BLEEDING": [
+        "haemorrhage","hemorrhage","epistaxis",
+        "gastrointestinal haemorrhage","gastrointestinal hemorrhage",
+        "thrombocytopenia","coagulopathy"
+    ],
+    "NEPHROTOXICITY": [
+        "renal failure","acute kidney injury","creatinine increased",
+        "interstitial nephritis","proteinuria","haematuria","hematuria"
+    ],
+    "SEIZURE_RISK": [
+        "seizure","seizures","convulsion","convulsions",
+        "tonic clonic","clonic convulsion","status epilepticus"
+    ],
+    "HYPOTENSION": [
+        "hypotension","orthostatic hypotension","postural hypotension",
+        "blood pressure decreased"
+    ],
+    "HYPERTENSION": [
+        "hypertension","blood pressure increased"
+    ],
+    "BRADYCARDIA": [
+        "bradycardia","heart rate decreased","sinus bradycardia"
+    ],
+    "TACHYCARDIA": [
+        "tachycardia","supraventricular tachycardia"
+    ],
+    "HYPERKALEMIA": [
+        "hyperkalaemia","hyperkalemia","potassium increased"
+    ],
+    "MYOPATHY_RHABDO": [
+        "rhabdomyolysis","myopathy","ck increased","creatine kinase increased"
+    ],
+    "HYPERGLYCEMIA": [
+        "hyperglycaemia","hyperglycemia","blood glucose increased"
+    ],
+    "HYPOGLYCEMIA": [
+        "hypoglycaemia","hypoglycemia"
+    ],
+    "RESP_DEPRESSION": [
+        "respiratory depression","hypoventilation"
+    ],
+    "C_DIFF": [
+        "clostridium difficile","c. difficile","pseudomembranous colitis"
+    ],
+    "SUICIDALITY": [
+        "suicidal ideation","suicidal behaviour","suicidal behavior","suicide attempt"
+    ],
+    "PANCYTOPENIA": [
+        "pancytopenia","agranulocytosis","neutropenia","leukopenia","leucopenia"
+    ],
+}
+
+# Clinical severity weights (adjustable)
+TAG_WEIGHTS = {
+    "QT_PROLONGATION": 4.0,
+    "SEVERE_CUTANEOUS": 4.0,
+    "SEIZURE_RISK": 3.5,
+    "PANCYTOPENIA": 3.5,
+    "BLEEDING": 3.0,
+    "HEPATOTOXICITY": 3.0,
+    "C_DIFF": 2.5,
+    "TACHYCARDIA": 2.5,
+    "BRADYCARDIA": 2.5,
+    "CNS_DEPRESSION": 2.0,
+    "HYPOTENSION": 2.0,
+}
+
 def actiongen_policy(
     llm_mode: str = "blend",                     # "never" | "blend" | "always"
     use_curated_for_high_risk: bool = True,
