@@ -2,6 +2,7 @@
 from __future__ import annotations
 from typing import Any, Dict, List, Optional, Tuple, Iterable
 from pathlib import Path
+import pandas as pd
 
 # --------------------------------------------------------------------
 # Global vocabulary filters / constants
