@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional, Tuple, Iterable
 from pathlib import Path
 import pandas as pd
+from functools import lru_cache
 
 # --------------------------------------------------------------------
 # Global vocabulary filters / constants
@@ -210,6 +211,16 @@ def sanitize_text(text: str, max_chars: int, banned_phrases: list, redact_regexe
     if not s.endswith((".", "!", "?")):
         s += "."
     return s
+
+@lru_cache(maxsize=4096)
+def cached_llm_action(tag, drug_a, drug_b, driver, ex_a, ex_b,
+                         tone, style_hint, model, temperature, max_chars,
+                         banned, redacts, review_trigs, use_api):
+    prompt = build_action_prompt(tag, drug_a, drug_b, driver, ex_a, ex_b, tone, style_hint)
+    raw = call_llm(prompt, model=model, temperature=temperature, use_api=use_api)
+    clean = sanitize_text(raw, max_chars, list(banned), list(redacts))
+    review = needs_review(clean, list(review_trigs))
+    return clean, review
 
 # ==== From notebook cell 19 ====
 def needs_review(text: str, review_triggers: list) -> bool:
