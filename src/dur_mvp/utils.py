@@ -3,6 +3,25 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional, Tuple, Iterable
 from pathlib import Path
 
+@dataclass
+class ActionGenPolicy:
+    llm_mode: str = "blend"                    # "never" | "blend" | "always"
+    use_curated_for_high_risk: bool = True
+    temperature: float = 0.0
+    max_chars: int = 280
+    tone: str = "conservative"
+    banned_phrases: list = field(default_factory=list)
+    redact_regexes: list = field(default_factory=list)
+    add_review_flags_for: list = field(default_factory=list)
+    tag_overrides: dict = field(default_factory=dict)
+    model_name: str = "gpt-4o-mini"
+    use_api: bool = False                      # toggle API vs stub
+    # >>> add this <<<
+    style_hint: str = (
+        "One sentence, actionable, no citations, do not invent facts; "
+        "prefer monitoring/counseling; only advise ECG/labs/avoid if widely standard; ≤ 280 chars."
+    )
+
 # ==== From notebook cell 14 ====
 # Normalize helper
 def _norm(s: str) -> str:
@@ -358,7 +377,7 @@ def letter_score_from_actionable(df_actionable, drug_a_col=None, drug_b_col=None
     """
     if df_actionable.empty:
         return "A"  # no known interaction
-    
+
     tag_scores = []
     for _, row in df_actionable.iterrows():
         tag = row["tag"]
@@ -384,7 +403,7 @@ def letter_score_from_actionable(df_actionable, drug_a_col=None, drug_b_col=None
         # sqrt scaling tempers extreme values
         score = w * synergy * (combined ** 0.5)
         tag_scores.append(score)
-    
+
     # Emphasize the worst few risks
     total = sum(sorted(tag_scores, reverse=True)[:3])
 
@@ -429,7 +448,7 @@ def get_dur2(drug_a, drug_b, use_curated_for_high_risk=True,
     drug_b_col=f"{drug_b}_max_pct"
     )
     print(f"Overall Interaction Grade (Lexicomp style): {overall_grade}")
-    
+
 
     # display results
     print(f"Using OPENAI = {use_api}")

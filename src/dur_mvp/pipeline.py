@@ -212,25 +212,7 @@ def run(
     for c in ["num_labels_with_event", "total_labels", "percent_labels"]:
         if c in df_pt.columns:
             df_pt[c] = pd.to_numeric(df_pt[c], errors="coerce")
-    # ---- from notebook cell 9 ----
-    @dataclass
-    class ActionGenPolicy:
-        llm_mode: str = "blend"                    # "never" | "blend" | "always"
-        use_curated_for_high_risk: bool = True
-        temperature: float = 0.0
-        max_chars: int = 280
-        tone: str = "conservative"
-        banned_phrases: list = field(default_factory=list)
-        redact_regexes: list = field(default_factory=list)
-        add_review_flags_for: list = field(default_factory=list)
-        tag_overrides: dict = field(default_factory=dict)
-        model_name: str = "gpt-4o-mini"
-        use_api: bool = False                      # toggle API vs stub
-        # >>> add this <<<
-        style_hint: str = (
-            "One sentence, actionable, no citations, do not invent facts; "
-            "prefer monitoring/counseling; only advise ECG/labs/avoid if widely standard; ≤ 280 chars."
-        )
+
     # ---- from notebook cell 10 ----
     # Very light blocklist (skip junky/too generic terms)
     BLOCKLIST = set([
@@ -331,7 +313,7 @@ def run(
     USE_OPENAI_API = True  # False = free dev mode; True = real API calls
     # ---- from notebook cell 26 ----
     user_secrets = UserSecretsClient()
-    my_secret_value = user_secrets.get_secret("openai_kaggle") 
+    my_secret_value = user_secrets.get_secret("openai_kaggle")
     os.environ["OPENAI_API_KEY"] = my_secret_value
     client = OpenAI()   # will pick up OPENAI_API_KEY automatically
     # ---- from notebook cell 27 ----
