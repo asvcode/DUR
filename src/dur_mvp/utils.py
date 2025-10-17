@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional, Tuple, Iterable
 from pathlib import Path
 import pandas as pd
 from functools import lru_cache
+import re
 
 # --------------------------------------------------------------------
 # Global vocabulary filters / constants
