@@ -20,13 +20,11 @@ import pandas as pd
 import ast, time
 from itertools import zip_longest
 from tqdm import tqdm
-import matplotlib.pyplot as plt
 import ast, time, gc
 from dataclasses import dataclass, field
 from functools import lru_cache
 from kaggle_secrets import UserSecretsClient
 from openai import OpenAI
-
 
 # If the notebook defined functions/classes, they live in utils
 try:
