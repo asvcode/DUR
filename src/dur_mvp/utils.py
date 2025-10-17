@@ -7,6 +7,23 @@ from functools import lru_cache
 import matplotlib.pyplot as plt
 import numpy as np
 import re
+import os
+
+try:
+    # Kaggle Secrets first (safe)
+    from kaggle_secrets import UserSecretsClient
+    key = UserSecretsClient().get_secret("OPENAI_API_KEY")
+    if key:
+        os.environ["OPENAI_API_KEY"] = key
+except Exception:
+    # Skip if not in Kaggle or no secret set
+    pass
+
+try:
+    from openai import OpenAI
+    _openai_client = OpenAI()  # Uses OPENAI_API_KEY from env
+except Exception as e:
+    _openai_client = None
 
 # --------------------------------------------------------------------
 # Global vocabulary filters / constants
@@ -350,20 +367,31 @@ def build_action_prompt(tag, drug_a, drug_b, driver, ex_a, ex_b, tone, style_hin
     )
 
 # ==== From notebook cell 29 ====
-def call_llm(prompt: str, model="gpt-4o-mini", temperature=0.0, use_api=False) -> str:
+def call_llm(
+    prompt: str,
+    model: str = "gpt-4o-mini",
+    temperature: float = 0.0,
+    use_api: bool = False,
+) -> str:
+    """
+    Wrapper for LLM call. Uses stub if API disabled or no client is available.
+    """
     if not use_api:
-        # Free, local dev output
-        return "[dev stub] " + prompt[:200]
-    # Live API call
-    r = client.chat.completions.create(
-        model=model,
-        messages=[
-            {"role": "system", "content": "You are a cautious clinical pharmacist."},
-            {"role": "user", "content": prompt}
-        ],
-        temperature=temperature
-    )
-    return r.choices[0].message.content.strip()
+        return "[stubbed response] " + prompt[:200]
+
+    if _openai_client is None:
+        return "[no OpenAI client available] " + prompt[:200]
+
+    try:
+        resp = _openai_client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=temperature,
+            max_tokens=300,
+        )
+        return resp.choices[0].message.content.strip()
+    except Exception as e:
+        return f"[error calling OpenAI: {e}]"
 
 # ==== From notebook cell 31 ====
 def pd_interaction_report(df_pt, drug_a: str, drug_b: str, min_pct: float = 0.5, require_pt_sources: int = 1):
