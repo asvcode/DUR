@@ -243,11 +243,9 @@ def cached_llm_action(tag, drug_a, drug_b, driver, ex_a, ex_b,
     return clean, review
 
 # ==== From notebook cell 19 ====
-def needs_review(text: str, triggers: list[str]):
-    # precise word-boundary, case-insensitive; returns (flag, matches)
-    matches = [t for t in triggers if re.search(rf"\b{re.escape(t)}\b", text, re.I)]
-    return (len(matches) > 0, matches)
-
+def needs_review(text: str, review_triggers: list) -> bool:
+    return any(trig.lower() in text.lower() for trig in review_triggers)
+    
 # ==== From notebook cell 21 ====
 def get_details(drug_a: str, drug_b: str, df_pt=None):
     if df_pt is None:
