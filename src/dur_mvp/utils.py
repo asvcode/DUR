@@ -243,8 +243,10 @@ def cached_llm_action(tag, drug_a, drug_b, driver, ex_a, ex_b,
     return clean, review
 
 # ==== From notebook cell 19 ====
-def needs_review(text: str, review_triggers: list) -> bool:
-    return any(trig.lower() in text.lower() for trig in review_triggers)
+def needs_review(text: str, triggers: list[str]):
+    # precise word-boundary, case-insensitive; returns (flag, matches)
+    matches = [t for t in triggers if re.search(rf"\b{re.escape(t)}\b", text, re.I)]
+    return (len(matches) > 0, matches)
 
 # ==== From notebook cell 21 ====
 def get_details(drug_a: str, drug_b: str, df_pt=None):
@@ -306,51 +308,89 @@ def tag_scores_for_drug(df_pt, drug_name, min_pct=0.0, require_pt_sources=1):
     return out
 
 # ==== From notebook cell 23 ====
-def generate_action_text(tag, drug_a, drug_b, driver, ex_a, ex_b, policy: ActionGenPolicy):
+def generate_action_text(
+    tag: str,
+    drug_a: str,
+    drug_b: str,
+    driver: str,
+    ex_a: str,
+    ex_b: str,
+    policy,
+):
     """
-    Returns (action_text, action_source)
-    action_source ∈ {"curated","blend","llm"}
+    Produce the one-line action text and its source mode.
+
+    Args:
+        tag: safety/risk tag (e.g., 'QT_PROLONGATION')
+        drug_a, drug_b: ingredient names
+        driver: which side primarily drives the signal ('escitalopram'/'ondansetron'/...)
+        ex_a, ex_b: example effect terms shown for each drug
+        policy: config with attributes (llm_mode, tag_overrides, tone, style_hint, model_name,
+                temperature, max_chars, banned_phrases, redact_regexes, add_review_flags_for,
+                use_api). Works with DotDict or a dataclass.
+
+    Returns:
+        (action_text, action_source_mode)
     """
-    override = policy.tag_overrides.get(tag)
-    mode = override if override else policy.llm_mode
+    # Allow per-tag override of the mode ("curated", "blend", "always", etc.)
+    override = None
+    try:
+        override = policy.tag_overrides.get(tag)  # DotDict or dict
+    except Exception:
+        # If policy.tag_overrides isn't present, skip override
+        override = None
 
-    # 1) High-risk lock → curated only
-    if policy.use_curated_for_high_risk and tag in HIGH_RISK_TAGS:
-        return TAG_ACTIONS.get(tag, "Use conservative monitoring; escalate if concerning symptoms."), "curated"
+    mode = override if override else getattr(policy, "llm_mode", "blend")
 
-    if mode == "blend":
-        base = TAG_ACTIONS.get(tag, "")
-        if base:
-            text, review = cached_llm_action(
-                tag, drug_a, drug_b, driver, ex_a, ex_b + f" (Base: {base})",
-                policy.tone, policy.style_hint, policy.model_name, policy.temperature,
-                policy.max_chars, tuple(policy.banned_phrases), tuple(policy.redact_regexes),
-                tuple(policy.add_review_flags_for), policy.use_api                 # <<—— NEW
+    # Curated mode (if you have a curated map, plug it here and return early)
+    if mode == "curated":
+        # Example: look up a canned recommendation per tag, else fall back to LLM/stub
+        # curated_text = CURATED_ACTIONS.get(tag)
+        curated_text = None
+        if curated_text:
+            clean = sanitize_text(
+                curated_text,
+                getattr(policy, "max_chars", 280),
+                list(getattr(policy, "banned_phrases", [])),
+                list(getattr(policy, "redact_regexes", [])),
             )
-            if review: text = "[REVIEW] " + text
-            return text, "blend"
-        else:
-            text, review = cached_llm_action(
-                tag, drug_a, drug_b, driver, ex_a, ex_b,
-                policy.tone, policy.style_hint, policy.model_name, policy.temperature,
-                policy.max_chars, tuple(policy.banned_phrases), tuple(policy.redact_regexes),
-                tuple(policy.add_review_flags_for), policy.use_api                 # <<—— NEW
-            )
-            if review: text = "[REVIEW] " + text
-            return text, "llm"
+            flag, hits = needs_review(clean, list(getattr(policy, "add_review_flags_for", [])))
+            if flag:
+                clean = f"[REVIEW:{','.join(hits)}] " + clean
+            return clean, "curated"
+        # If no curated text, fall through to LLM path according to policy
 
-    if mode == "always":
-        text, review = cached_llm_action(
-            tag, drug_a, drug_b, driver, ex_a, ex_b,
-            policy.tone, policy.style_hint, policy.model_name, policy.temperature,
-            policy.max_chars, tuple(policy.banned_phrases), tuple(policy.redact_regexes),
-            tuple(policy.add_review_flags_for), policy.use_api                     # <<—— NEW
-        )
-        if review: text = "[REVIEW] " + text
-        return text, "llm"
+    # Decide whether to hit the LLM (always/blend) or stay stubbed (never)
+    will_call_llm = (mode in {"always", "blend"})
+    raw = call_llm(
+        prompt=build_action_prompt(
+            tag=tag,
+            drug_a=drug_a,
+            drug_b=drug_b,
+            driver=driver,
+            ex_a=ex_a or "-",
+            ex_b=ex_b or "-",
+            tone=getattr(policy, "tone", "conservative"),
+            style_hint=getattr(policy, "style_hint", None),
+        ),
+        model=getattr(policy, "model_name", "gpt-4o-mini"),
+        temperature=float(getattr(policy, "temperature", 0.0)),
+        use_api=bool(getattr(policy, "use_api", False)) if will_call_llm else False,
+    )
 
-    # Fallback
-    return TAG_ACTIONS.get(tag, "Standard monitoring and counseling."), "curated"
+    clean = sanitize_text(
+        raw,
+        getattr(policy, "max_chars", 280),
+        list(getattr(policy, "banned_phrases", [])),
+        list(getattr(policy, "redact_regexes", [])),
+    )
+
+    # Run review check on CLEAN text only
+    flag, hits = needs_review(clean, list(getattr(policy, "add_review_flags_for", [])))
+    if flag:
+        clean = f"[REVIEW:{','.join(hits)}] " + clean
+
+    return clean, ("llm" if will_call_llm else "stub")
 
 # ==== From notebook cell 28 ====
 def build_action_prompt(tag, drug_a, drug_b, driver, ex_a, ex_b, tone, style_hint):
