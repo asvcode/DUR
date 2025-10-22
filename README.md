@@ -1,11 +1,6 @@
-# dur_mvp
+# Drug Utilization Review (DUR) Dashboard
 
-Professionalized, minimal Python package extracted from your notebook.
+Tool that utlizies the ONEsides database OnSIDES database: Extracting adverse drug events from drug labels using natural language processing models (https://pubmed.ncbi.nlm.nih.gov/40179876/) and utilizies RxNorm mapping and adverse-event analytics to highlight the most frequent interactions as percentage-based gauges—transforming complex DUR data into actionable clinical insight for pharmacists
 
-## quick start
 
-Run these commands in your terminal:
-
-pip install -e .
-python -m dur_mvp.pipeline --help
-python -m dur_mvp.pipeline
+![DUR Dashboard](dur_one.jpg)
