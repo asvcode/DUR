@@ -608,7 +608,6 @@ def get_dur(drug_a, drug_b, use_curated_for_high_risk=True,
 
     # display results
     print(f"Using OPENAI = {use_api}")
-    print(f"Overall Interaction Grade (Lexicomp style): {overall_grade}")
     display(df_actionable)
 
     # draw gauges
