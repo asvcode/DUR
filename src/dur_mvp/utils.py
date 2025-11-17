@@ -5,6 +5,8 @@ from pathlib import Path
 import pandas as pd
 import math, re, numpy as np, matplotlib.pyplot as plt
 from functools import lru_cache
+import os
+from openai import OpenAI
 
 # --------------------------------------------------------------------
 # Global vocabulary filters / constants
@@ -284,6 +286,8 @@ def tag_scores_for_drug(df_pt, drug_name, min_pct=0.0, require_pt_sources=1):
     return out
 
 # ==== LLM ====
+client = OpenAI()
+
 @lru_cache(maxsize=4096)
 def cached_llm_action(tag, drug_a, drug_b, driver, ex_a, ex_b,
                       tone, style_hint, model, temperature, max_chars,
@@ -294,9 +298,6 @@ def cached_llm_action(tag, drug_a, drug_b, driver, ex_a, ex_b,
     review = needs_review(clean, list(review_trigs))
     return clean, review
 
-
-
-# ==== From notebook cell 23 ====
 def generate_action_text(tag, drug_a, drug_b, driver, ex_a, ex_b, policy):
     """
     Returns (action_text, action_source)
@@ -346,7 +347,6 @@ def generate_action_text(tag, drug_a, drug_b, driver, ex_a, ex_b, policy):
     # "never" or anything else → curated only
     return TAG_ACTIONS.get(tag, "Standard monitoring and counseling."), "curated"
 
-# ==== From notebook cell 28 ====
 def build_action_prompt(tag, drug_a, drug_b, driver, ex_a, ex_b, tone, style_hint):
     style_hint = style_hint or "One sentence, conservative, ≤ 280 chars."
     return (
@@ -360,7 +360,6 @@ def build_action_prompt(tag, drug_a, drug_b, driver, ex_a, ex_b, tone, style_hin
         f"Return ONE action sentence:"
     )
 
-# ==== From notebook cell 29 ====
 def call_llm(prompt: str, model="gpt-4o-mini", temperature=0.0, use_api=False) -> str:
     if not use_api:
         # Free, local dev output
