@@ -101,6 +101,13 @@ TAG_WEIGHTS = {
     "HYPOTENSION": 2.0,
 }
 
+TAG_ACTIONS = {
+    "contraindicated": "Avoid this combination; consider an alternative or consult a specialist.",
+    "qt_prolongation": "Monitor QT interval/electrolytes; avoid other QT-prolonging drugs; seek ECG if symptomatic.",
+    "serotonin_syndrome": "Avoid overlapping serotonergic agents where possible; counsel on symptoms; seek urgent care if severe.",
+    # ...
+}
+
 class DotDict(dict):
     __getattr__ = dict.get
     __setattr__ = dict.__setitem__
