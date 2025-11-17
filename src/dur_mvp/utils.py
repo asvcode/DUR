@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional, Tuple, Iterable
 from pathlib import Path
 import pandas as pd
 import math, re, numpy as np, matplotlib.pyplot as plt
+from functools import lru_cache
 
 # --------------------------------------------------------------------
 # Global vocabulary filters / constants
@@ -282,31 +283,27 @@ def tag_scores_for_drug(df_pt, drug_name, min_pct=0.0, require_pt_sources=1):
         out[tag] = {"max_pct": max_pct, "examples": examples}
     return out
 
-# ==== Placeholder for Openai LLM mode ====
-def cached_llm_action(*args, **kwargs):
-    """
-    Placeholder for LLM-based action text generation.
+# ==== LLM ====
+@lru_cache(maxsize=4096)
+def cached_llm_action(tag, drug_a, drug_b, driver, ex_a, ex_b,
+                      tone, style_hint, model, temperature, max_chars,
+                      banned, redacts, review_trigs, use_api: bool):
+    prompt = build_action_prompt(tag, drug_a, drug_b, driver, ex_a, ex_b, tone, style_hint)
+    raw = call_llm(prompt, model=model, temperature=temperature, use_api=use_api)
+    clean = sanitize_text(raw, max_chars, list(banned), list(redacts))
+    review = needs_review(clean, list(review_trigs))
+    return clean, review
 
-    This stub keeps the DUR pipeline working in environments
-    where we don't actually call an LLM (e.g., Kaggle without API keys).
-    It returns a generic action string and a False review flag.
-    """
-    text = (
-        "LLM-generated action text is disabled in this environment. "
-        "Please review this interaction in standard clinical references."
-    )
-    needs_review = False
-    return text, needs_review
 
 
 # ==== From notebook cell 23 ====
-def generate_action_text(tag, drug_a, drug_b, driver, ex_a, ex_b, policy: ActionGenPolicy):
+def generate_action_text(tag, drug_a, drug_b, driver, ex_a, ex_b, policy):
     """
     Returns (action_text, action_source)
     action_source ∈ {"curated","blend","llm"}
     """
     override = policy.tag_overrides.get(tag)
-    mode = override if override else policy.llm_mode
+    mode = override if override else policy.llm_mode  # "never"|"blend"|"always"
 
     # 1) High-risk lock → curated only
     if policy.use_curated_for_high_risk and tag in HIGH_RISK_TAGS:
@@ -319,18 +316,20 @@ def generate_action_text(tag, drug_a, drug_b, driver, ex_a, ex_b, policy: Action
                 tag, drug_a, drug_b, driver, ex_a, ex_b + f" (Base: {base})",
                 policy.tone, policy.style_hint, policy.model_name, policy.temperature,
                 policy.max_chars, tuple(policy.banned_phrases), tuple(policy.redact_regexes),
-                tuple(policy.add_review_flags_for), policy.use_api                 # <<—— NEW
+                tuple(policy.add_review_flags_for), policy.use_api
             )
-            if review: text = "[REVIEW] " + text
+            if review:
+                text = "[REVIEW] " + text
             return text, "blend"
         else:
             text, review = cached_llm_action(
                 tag, drug_a, drug_b, driver, ex_a, ex_b,
                 policy.tone, policy.style_hint, policy.model_name, policy.temperature,
                 policy.max_chars, tuple(policy.banned_phrases), tuple(policy.redact_regexes),
-                tuple(policy.add_review_flags_for), policy.use_api                 # <<—— NEW
+                tuple(policy.add_review_flags_for), policy.use_api
             )
-            if review: text = "[REVIEW] " + text
+            if review:
+                text = "[REVIEW] " + text
             return text, "llm"
 
     if mode == "always":
@@ -338,12 +337,13 @@ def generate_action_text(tag, drug_a, drug_b, driver, ex_a, ex_b, policy: Action
             tag, drug_a, drug_b, driver, ex_a, ex_b,
             policy.tone, policy.style_hint, policy.model_name, policy.temperature,
             policy.max_chars, tuple(policy.banned_phrases), tuple(policy.redact_regexes),
-            tuple(policy.add_review_flags_for), policy.use_api                     # <<—— NEW
+            tuple(policy.add_review_flags_for), policy.use_api
         )
-        if review: text = "[REVIEW] " + text
+        if review:
+            text = "[REVIEW] " + text
         return text, "llm"
 
-    # Fallback
+    # "never" or anything else → curated only
     return TAG_ACTIONS.get(tag, "Standard monitoring and counseling."), "curated"
 
 # ==== From notebook cell 28 ====
