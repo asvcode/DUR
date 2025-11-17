@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional, Tuple, Iterable
 from pathlib import Path
 import pandas as pd
+import matplotlib.pyplot as plt
 
 # --------------------------------------------------------------------
 # Global vocabulary filters / constants
