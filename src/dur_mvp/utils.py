@@ -274,6 +274,23 @@ def tag_scores_for_drug(df_pt, drug_name, min_pct=0.0, require_pt_sources=1):
         out[tag] = {"max_pct": max_pct, "examples": examples}
     return out
 
+# ==== Placeholder for Openai LLM mode ====
+def cached_llm_action(*args, **kwargs):
+    """
+    Placeholder for LLM-based action text generation.
+
+    This stub keeps the DUR pipeline working in environments
+    where we don't actually call an LLM (e.g., Kaggle without API keys).
+    It returns a generic action string and a False review flag.
+    """
+    text = (
+        "LLM-generated action text is disabled in this environment. "
+        "Please review this interaction in standard clinical references."
+    )
+    needs_review = False
+    return text, needs_review
+
+
 # ==== From notebook cell 23 ====
 def generate_action_text(tag, drug_a, drug_b, driver, ex_a, ex_b, policy: ActionGenPolicy):
     """
