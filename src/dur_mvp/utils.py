@@ -573,7 +573,7 @@ def letter_score_from_actionable(df_actionable, drug_a_col=None, drug_b_col=None
         return "A"   # No known interaction
 
 # ==== From notebook cell 39 ====
-def get_dur2(drug_a, drug_b, use_curated_for_high_risk=True,
+def get_dur(drug_a, drug_b, use_curated_for_high_risk=True,
             combine_method='max', top_n=7, llm_mode='blend', use_api=False, df_pt=None):
     """
     Build an actionable drug–drug interaction table, draw gauges,
