@@ -5,7 +5,7 @@ Tool that utlizies the OnSIDES database: Extracting adverse drug events from dru
 
 ![DUR Dashboard](dur_one.jpg)
 
-# Easy usage guide in Kaggle
+## Easy usage guide in Kaggle
 
 `!git clone "https://github.com/asvcode/DUR.git"`
 
@@ -43,6 +43,24 @@ grade, table = get_dur(
     # config="config/dur.yaml",  # if you adopted config-driven review
 )
 ```
+
+![DUR Dashboard](Images/dashboard2.jpg)
+
+For Drug-Drug visual:
+
+```
+img = generate_ddi_visual(
+    "escitalopram",
+    "ondansetron",
+    table,
+    use_api=True         # must be True to actually call the images API
+)
+```
+
+![DD Visual](Images/dd.jpg)
+
+
+
 
 
 
